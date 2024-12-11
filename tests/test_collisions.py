@@ -133,14 +133,14 @@ def visualize_collision_with_cube(data, urdf, visualize=True, delay=True):
             
             p.stepSimulation()
 
-def visualize_collision_with_loaded_obstacle(data, urdf, sdf_path, n=10, visualize=True, delay=True):
+def visualize_collision_with_loaded_obstacle(data, urdf, obstacle, n=10, visualize=True, delay=False):
     """
     Visualize pre-computed joint configurations in PyBullet with collision detection.
 
     Args:
         data: List of dictionaries containing pre-computed joint angles for robot poses.
         urdf: Path to the robot URDF file.
-        sdf_path: Path to the obstacle SDF file.
+        obstacle: An instance of the Obstacle class or derived class (e.g., Sphere, Cube).
         n: Number of poses to visualize.
         visualize: Whether to visualize the robot in PyBullet.
         delay: Whether to add a delay between visualizing poses.
@@ -151,10 +151,6 @@ def visualize_collision_with_loaded_obstacle(data, urdf, sdf_path, n=10, visuali
         p.setRealTimeSimulation(False)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-
-        # Verify the SDF file exists
-        if not os.path.isfile(sdf_path):
-            raise FileNotFoundError(f"The SDF file at {sdf_path} does not exist.")
 
         # Set up camera for better visualization
         yaw = 90
@@ -170,28 +166,17 @@ def visualize_collision_with_loaded_obstacle(data, urdf, sdf_path, n=10, visuali
         # Load robot model
         robot_id = p.loadURDF(urdf, basePosition=[0, 0, 0], useFixedBase=True)
 
-        # Load obstacle from SDF file
-        try:
-            obstacle_ids = p.loadSDF(sdf_path)
-            if not obstacle_ids:
-                raise ValueError(f"Failed to load obstacle from SDF file: {sdf_path}")
-
-            for obstacle_id in obstacle_ids:
-                p.changeDynamics(obstacle_id, -1, mass=0)  # Make obstacle static
-                # Move the table up and to the right
-                p.resetBasePositionAndOrientation(obstacle_id, [0.5, 0.5, 0.75], [0, 0, 0, 1])
-
-        except Exception as e:
-            print(f"Error loading SDF file: {e}")
-            p.disconnect()
-            return
+        # Generate and load the obstacle from the Obstacle object
+        obstacle_id = obstacle.generate_pybullet_obstacle()
 
         # Visualize robot poses and check for collisions
         cached_contact = None
-        while True:
-            contact_points_with_obstacle = p.getContactPoints(bodyA=robot_id, bodyB=obstacle_id)
+        for _ in range(n):
+            # Simulate robot movement (update poses)
+            # (For example, you can set joint configurations using `data` if necessary)
 
-            # print(contact_points_with_obstacle)
+            # Check for collisions between the robot and the obstacle
+            contact_points_with_obstacle = p.getContactPoints(bodyA=robot_id, bodyB=obstacle_id)
 
             if contact_points_with_obstacle:
                 for contact in contact_points_with_obstacle:
@@ -199,10 +184,14 @@ def visualize_collision_with_loaded_obstacle(data, urdf, sdf_path, n=10, visuali
                         print(f"Contact at position {contact[5]}")
                     cached_contact = contact[5]
 
-            
+            # Optionally add a delay between visualizing poses
+            if delay:
+                time.sleep(0.1)  # Adjust the delay as needed
+
             p.stepSimulation()
-
-
+        
+        # Disconnect PyBullet when done
+        p.disconnect()
 if __name__ == "__main__":
     search_path = pybullet_data.getDataPath()
 
