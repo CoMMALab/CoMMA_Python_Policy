@@ -44,7 +44,9 @@ def visualize_collision_with_sphere(data, urdf, visualize=True, delay=True):
         p.setRealTimeSimulation(False)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-
+        p.setGravity(0, 0, -9.81/1000)
+        p.setTimeStep(1/240.0)
+        
         # Set up camera for better visualization
         yaw = 90
         pitch = -35
@@ -97,6 +99,8 @@ def visualize_collision_with_cube(data, urdf, visualize=True, delay=True):
         p.setRealTimeSimulation(False)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        p.setGravity(0, 0, -9.81/1000)
+        p.setTimeStep(1/240.0)
 
         # Set up camera for better visualization
         yaw = 90
@@ -133,7 +137,7 @@ def visualize_collision_with_cube(data, urdf, visualize=True, delay=True):
             
             p.stepSimulation()
 
-def visualize_collision_with_loaded_obstacle(data, urdf, obstacle, n=10, visualize=True, delay=False):
+def visualize_collision_with_loaded_obstacle(data, urdf, obstacle, visualize=True, delay=False):
     """
     Visualize pre-computed joint configurations in PyBullet with collision detection.
 
@@ -151,7 +155,8 @@ def visualize_collision_with_loaded_obstacle(data, urdf, obstacle, n=10, visuali
         p.setRealTimeSimulation(False)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-
+        p.setGravity(0, 0, -9.81/1000)
+        p.setTimeStep(1/240.0)
         # Set up camera for better visualization
         yaw = 90
         pitch = -35
@@ -168,15 +173,16 @@ def visualize_collision_with_loaded_obstacle(data, urdf, obstacle, n=10, visuali
 
         # Generate and load the obstacle from the Obstacle object
         obstacle_id = obstacle.generate_pybullet_obstacle()
+        # p.resetBasePositionAndOrientation(obstacle_id, [0.5, 0.5, 0.75], [0, 0, 0, 1])
+         # Load obstacle from SDF file
+        print("Full sdf path:", obstacle.model_path)
 
         # Visualize robot poses and check for collisions
         cached_contact = None
-        for _ in range(n):
-            # Simulate robot movement (update poses)
-            # (For example, you can set joint configurations using `data` if necessary)
-
-            # Check for collisions between the robot and the obstacle
+        while True:
             contact_points_with_obstacle = p.getContactPoints(bodyA=robot_id, bodyB=obstacle_id)
+
+            # print(contact_points_with_obstacle)
 
             if contact_points_with_obstacle:
                 for contact in contact_points_with_obstacle:
@@ -184,19 +190,13 @@ def visualize_collision_with_loaded_obstacle(data, urdf, obstacle, n=10, visuali
                         print(f"Contact at position {contact[5]}")
                     cached_contact = contact[5]
 
-            # Optionally add a delay between visualizing poses
-            if delay:
-                time.sleep(0.1)  # Adjust the delay as needed
-
+            
             p.stepSimulation()
-        
-        # Disconnect PyBullet when done
-        p.disconnect()
 if __name__ == "__main__":
     search_path = pybullet_data.getDataPath()
 
     # Define URDF and dataset
-    urdf = "franka/fp3_franka_hand.urdf"
+    urdf = "../franka/fp3_franka_hand.urdf"
     data = [
         {'joint_angles': [0.0, -0.5, 0.5, -1.0, 0.0, 0.8, 0.0]},  # Example pose 1
         {'joint_angles': [0.2, -0.3, 0.7, -0.9, 0.1, 0.5, 0.0]},  # Example pose 2
@@ -205,8 +205,12 @@ if __name__ == "__main__":
 
     sdf_path = "test_sdfs/cinder_block/model.sdf"
     # sdf_path = "test_sdfs/table.sdf"
+    full_path = os.path.abspath(sdf_path)
 
-    # Visualize pre-computed joint configurations
+    obstacle = Obstacle(model_path=full_path, name = "cinder_block", color=None, search_path = "test_sdfs/cinder_block", position = [0.5, 0.5, 0.75], mass=0.001, pose=[0,0,0,1])
+    print("Obstacle:", obstacle)
+
+
     # visualize_collision_with_sphere(data=data, urdf=urdf)
-    visualize_collision_with_cube(data=data, urdf=urdf)
-    # visualize_collision_with_loaded_obstacle(data=data, urdf=urdf, sdf_path=sdf_path, n=10)
+    # visualize_collision_with_cube(data=data, urdf=urdf)
+    visualize_collision_with_loaded_obstacle(data=data, urdf=urdf, obstacle=obstacle)
